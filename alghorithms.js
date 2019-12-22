@@ -76,7 +76,6 @@ async function breathFirstSearch(order = [start], path = []) {
 
     checked++;
 
-
     if (matrix[y][x] === -3)
     {
         path["end"] = [y, x];

@@ -222,7 +222,6 @@ async function clearF() {
         loadMaze();
     else
         tryingToSave();
-    //drawMaze();
     free = true;
 }
 
