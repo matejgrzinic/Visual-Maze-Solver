@@ -3,8 +3,14 @@ let all = [];
 let matrix = [];
 let maze = [];
 let visited = [];
+let visitedReset = [];
+
 let size;
 let start;
+
+let showCostCheckbox;
+let showCost = false;
+
 
 let izris = true;
 let sleepValue;
@@ -16,13 +22,22 @@ let allEnds = [];
 let checked = 0;
 let price = 0;
 let pathlength = 0;
+
 let mazetest = [];
+let minCost = Infinity;
+
+let showStatus = false;
+let prevStatus = ""
+let status = ""
+let algoStatus = ""
+let stopGenetic = false;
+let firstGenetic = true;
 
 function preload() {
     for (let i = 1; i <= 15; i++)
         all.push(loadStrings('res/labyrinth_' + i + '.txt'));
-    result = loadStrings('res/labyrinth_1.txt');
-    //result = loadStrings('res/test.txt');
+    result = loadStrings('res/labyrinth_10.txt');
+    //result = loadStrings('res/genetictest.txt');
 }
 
 function setup() {
@@ -31,20 +46,34 @@ function setup() {
     loadMaze();
     size = (matrix.length > matrix[0].length) ? matrix.length : matrix[0].length;
     size = 800 / size;
-
+    
+    showCostCheckbox = document.getElementById("ShowCost");
     sleepValue = 0;
-    drawMaze();
+    drawMaze();    
 }
 
 function draw() {
+    showCost = showCostCheckbox.checked;
+
     if (result)
         drawMaze();
-    let status = "Checked: " + checked + "\nPrice: " + price + "\nPath length: " + pathlength;
 
-    document.getElementById("status").innerText = status;
+    if (algoStatus == "GENETIC"){
+        status = algoStatus + "\nPopulation: " + populationSize + "\nGeneration: " + nGeneration; // + "\nHeuristic sum: " + sumPathHeuristic;
+    }
+    else{
+        status = algoStatus + "\nChecked: " + checked + "\nPath length: " + pathlength + "\nPrice: " + price;
+    }
+    let resultStatus = prevStatus;
+    if (showStatus){
+        resultStatus = status + "\n \n" + resultStatus;        
+    }
+
+    document.getElementById("status").innerText = resultStatus;      
 }
 
 function loadMaze() {
+    visitedReset = [];
     for (let i = 0; i < result.length - 1; i++) {
         let row = result[i].split(",");
         let rowToPush = [];
@@ -63,11 +92,21 @@ function loadMaze() {
                 allEnds.push([i, j]);
             else if (rowToPush[j] === -2)
                 start = [i, j];
+            
+            if (rowToPush[j] >= 0)
+            {
+                minCost = (rowToPush[j] < minCost) ? rowToPush[j] : minCost;
+            }
         }
         visited.push(v);
         matrix.push(rowToPush);
-        maze.push(rowToPush2);
+        maze.push(rowToPush2);        
     }
+    for (let i = 0; i < visited.length; i++)
+    {
+        visitedReset.push(visited[i].slice());
+    }
+    
 }
 
 function drawMaze() {
@@ -95,12 +134,15 @@ function drawMaze() {
                     fill("magenta");
                     break;
                 default:
-                    fill(255, 255, 255);
+                    fill("white");
                     break;
             }
             rect(j * size, i * size, size, size);
-            // fill("black");
-            // text(maze[i][j], j * size + size / 2.5, (i + 1) * size - size / 2);
+            if (showCost && matrix[i][j] !== -3 && matrix[i][j] !== -2){
+                fill("black");
+                textSize(320 / matrix.length);
+                text(maze[i][j], j * size + size / 3, (i + 1) * size - size / 2.5);
+            }
         }
     }
 }
@@ -139,7 +181,11 @@ document.getElementById("DFS").onclick = async function() {
     {
         clearF();
         free = false;
+        algoStatus = "DFS";
+        showStatus = true;
         await depthFirstSearch();
+        showStatus = false;
+        prevStatus = status + "\n\n" + prevStatus;
         free = true;
     }
 };
@@ -148,7 +194,11 @@ document.getElementById("BFS").onclick = async function() {
     if (free) {
         await clearF();
         free = false;
+        algoStatus = "BFS";
+        showStatus = true;
         await breathFirstSearch();
+        showStatus = false;
+        prevStatus = status + "\n\n" + prevStatus;
         free = true;
     }
 };
@@ -157,7 +207,11 @@ document.getElementById("GBFS").onclick = async function() {
     if (free) {
         await clearF();
         free = false;
+        algoStatus = "GBFS";
+        showStatus = true;
         await greedyBestFirstSearch();
+        showStatus = false;
+        prevStatus = status + "\n\n" + prevStatus;
         free = true;
     }
 };
@@ -166,18 +220,45 @@ document.getElementById("ASTAR").onclick = async function() {
     if (free) {
         await clearF();
         free = false;
+        algoStatus = "A*";
+        showStatus = true;
         await astar();
+        showStatus = false;
+        prevStatus = status + "\n\n" + prevStatus;
+        free = true;
+    }
+};
+
+document.getElementById("GENETIC").onclick = async function() {
+    if (free) {
+        await clearF();
+        free = false;      
+        algoStatus = "GENETIC";
+        showStatus = true;
+        stopGenetic = false;  
+        await genetic();
+        if (firstGenetic){
+            firstGenetic = false;
+        }
+        else{
+            //prevStatus = status + "\n\n" + prevStatus;
+        }
+       
         free = true;
     }
 };
 
 document.getElementById("Clear").onclick = async function() {
+    stopGenetic = true;
     if (free) {
         clearF();
     }
 };
 
+
+
 document.getElementById("Random").onclick = async function() {
+    stopGenetic = true;
     if (free) {
         free = false;
         let rand = Math.floor(Math.random() * 15 + 1);
@@ -188,10 +269,10 @@ document.getElementById("Random").onclick = async function() {
             tmp = all[rand];
         }
         result = tmp;
-        clearF();
+        clearF();        
         size = (matrix.length > matrix[0].length) ? matrix.length : matrix[0].length;
         size = 800 / size;
-        free = true;
+        free = true;        
     }
 };
 
@@ -214,16 +295,44 @@ async function clearF() {
     maze = [];
     visited = [];
     allEnds = [];
+
+    population = [];
+    bestPath = 0;
+    bestPathDNA = [];
+    bestCurrPath = 0;
+    bestCurrPathDNA = [];
+    sumPathHeuristic = 0;
+    sleepV = 200;  
+    
+
     izris = true;
     checked = 0;
     price = 0;
     pathlength = 0;
+    minCost = Infinity;
     if (result)
         loadMaze();
     else
         tryingToSave();
     free = true;
 }
+
+function clearVisited(){
+    visited = [];
+    for (let i = 0; i < visitedReset.length; i++)
+    {
+        visited.push(visitedReset[i].slice());
+    }
+}
+
+function clearMatrix(){
+    matrix = [];
+    for (let i = 0; i < maze.length; i++)
+    {
+        matrix.push(maze[i].slice());
+    }
+}
+
 
 class Heap {
     elements;

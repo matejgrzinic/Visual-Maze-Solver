@@ -2,14 +2,15 @@ async function depthFirstSearch(location = start, path = []) {
     let y = location[0];
     let x = location[1];
 
-    checked++;
-
+    
     if (matrix[y][x] === -3)
     {
         path["end"] = [y, x];
         await drawFinalPath(path);
         return path;
     }
+
+    checked++;
 
     visited[y][x] = true;
 
@@ -72,9 +73,7 @@ async function depthFirstSearch(location = start, path = []) {
 
 async function breathFirstSearch(order = [start], path = []) {
     let y = order[0][0];
-    let x = order[0][1];
-
-    checked++;
+    let x = order[0][1];    
 
     if (matrix[y][x] === -3)
     {
@@ -82,6 +81,8 @@ async function breathFirstSearch(order = [start], path = []) {
         await drawFinalPath(path);
         return path;
     }
+
+    checked++;
 
     visited[y][x] = true;
 
@@ -129,7 +130,7 @@ async function breathFirstSearch(order = [start], path = []) {
     }
 }
 
-async function heuristicManhattan(location){
+function heuristicManhattan(location){
     let x = location[1];
     let y = location[0];
 
@@ -142,8 +143,8 @@ async function heuristicManhattan(location){
         let d = xDistance + yDistance;
         if (d < distance)
             distance = d;
-    }
-    return distance;
+    }    
+    return distance * minCost;
 }
 
 async function greedyBestFirstSearch(location = start, path = [], heap = new Heap()) {
